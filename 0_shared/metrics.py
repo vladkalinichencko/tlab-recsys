@@ -1,10 +1,11 @@
 import json
+import os
 
 import numpy as np
 from sklearn.metrics import log_loss, roc_auc_score
 
 K = 10
-REPORTS = "reports"
+REPORTS = os.environ.get("REPORTS", "reports")
 # the same random test users for every model, so models too slow for the full test (TabICL) compare with the rest
 EVAL_USERS = 200
 

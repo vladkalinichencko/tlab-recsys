@@ -4,7 +4,8 @@ notes.md
 draft.md
 CLAUDE.md
 AGENTS.md
-data/
+data/*
+!data/*.parquet
 models/
 logs/
 reports/

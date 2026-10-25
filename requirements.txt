@@ -1,0 +1,11 @@
+torch
+tabicl==2.2.0
+tabm==0.0.3
+catboost==1.2.10
+lightgbm
+scikit-learn
+pandas
+numpy
+scipy
+pyarrow
+huggingface_hub

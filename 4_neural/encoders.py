@@ -5,7 +5,8 @@ A batch holds the user's last events before the window: item, age bucket, watche
     autoencoder  watched-items vector -> MLP, EASE's input with a nonlinearity, order invisible
     bag          masked mean over event embeddings, order invisible
     lstm         one LSTM layer over events, read at the last event
-    transformer  two self-attention layers with learned positions, read at the last event
+    transformer  two causal self-attention layers with learned positions, read at the last event;
+                 slot t sees slots up to t only, so sequence(batch) predicts the next event (SASRec)
 """
 import torch
 from torch import nn
@@ -31,7 +32,7 @@ class Events(nn.Module):
 
 
 def real_slots(batch):
-    position_L = torch.arange(batch["item"].shape[1])
+    position_L = torch.arange(batch["item"].shape[1], device=batch["item"].device)
     return position_L[None, :] < batch["length"][:, None]
 
 
@@ -52,7 +53,7 @@ class Autoencoder(nn.Module):
 
     def forward(self, batch):
         users = len(batch["length"])
-        watched_UI = torch.zeros(users, self.n_items + 1)
+        watched_UI = torch.zeros(users, self.n_items + 1, device=batch["item"].device)
         watched_UI.scatter_add_(1, batch["item"], batch["watched"].float())
         return self.mlp(watched_UI[:, : self.n_items].clamp(max=1.0))
 
@@ -86,12 +87,17 @@ class Transformer(nn.Module):
         layer = nn.TransformerEncoderLayer(dim, HEADS, 2 * dim, dropout=0.1, batch_first=True)
         self.transformer = nn.TransformerEncoder(layer, LAYERS, enable_nested_tensor=False)
 
-    def forward(self, batch):
-        position_L = torch.arange(batch["item"].shape[1])
-        hidden_ULD = self.transformer(
-            self.events(batch) + self.position(position_L), src_key_padding_mask=~real_slots(batch)
+    def sequence(self, batch):
+        """hidden state of every slot, each slot computed from the slots up to it."""
+        slots = batch["item"].shape[1]
+        position_L = torch.arange(slots, device=batch["item"].device)
+        future_LL = torch.ones(slots, slots, dtype=torch.bool, device=batch["item"].device).triu(1)
+        return self.transformer(
+            self.events(batch) + self.position(position_L), mask=future_LL, is_causal=True, src_key_padding_mask=~real_slots(batch)
         )
-        return last_slot(hidden_ULD, batch)
+
+    def forward(self, batch):
+        return last_slot(self.sequence(batch), batch)
 
 
 ENCODERS = {"autoencoder": Autoencoder, "bag": Bag, "lstm": LSTM, "transformer": Transformer}

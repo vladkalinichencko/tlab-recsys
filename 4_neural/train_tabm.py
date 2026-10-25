@@ -26,7 +26,7 @@ NAME = f"tabm_{FEATURES}"
 K = 32
 EPOCHS = 30
 BATCH = 4096
-DEVICE = "mps" if torch.backends.mps.is_available() else "cpu"
+DEVICE = "cuda" if torch.cuda.is_available() else "mps" if torch.backends.mps.is_available() else "cpu"
 torch.manual_seed(0)
 
 specs = list(grammar.all_specs()) if FEATURES == "auto" else ()
