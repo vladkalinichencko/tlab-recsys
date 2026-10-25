@@ -1,0 +1,13 @@
+.*
+!.gitignore
+notes.md
+draft.md
+CLAUDE.md
+AGENTS.md
+data/
+models/
+logs/
+reports/
+runs/
+__pycache__/
+*.pyc
