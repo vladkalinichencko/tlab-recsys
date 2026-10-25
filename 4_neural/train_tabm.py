@@ -5,7 +5,8 @@
 One row = user x pool item, label = watched in the window, binary cross-entropy on each of the K
 ensemble members, the score is the mean probability. Numbers go through a quantile transform fitted
 on fit, NaN becomes 0, categories become indices with one extra index for unseen values.
-The epoch with the best val ndcg@10 is kept, as the tree with the best val ndcg@10 in boosting.
+Training stops PATIENCE epochs after the best val ndcg@10 (at most EPOCHS), and the best epoch is kept,
+as the tree with the best val ndcg@10 in boosting.
 """
 import copy
 import sys
@@ -25,6 +26,7 @@ FEATURES = sys.argv[1] if len(sys.argv) > 1 else "all"
 NAME = f"tabm_{FEATURES}"
 K = 32
 EPOCHS = 30
+PATIENCE = 3
 BATCH = 4096
 DEVICE = "cuda" if torch.cuda.is_available() else "mps" if torch.backends.mps.is_available() else "cpu"
 torch.manual_seed(0)
@@ -72,7 +74,7 @@ model = TabM.make(
 ).to(DEVICE)
 optimizer = torch.optim.AdamW(model.parameters(), lr=2e-3, weight_decay=3e-4)
 
-best, best_state, curve = -1.0, None, []
+best, best_epoch, best_state, curve = -1.0, 0, None, []
 for epoch in range(EPOCHS):
     model.train()
     order = torch.randperm(len(label))
@@ -89,7 +91,9 @@ for epoch in range(EPOCHS):
     curve.append(ndcg)
     print(f"epoch {epoch + 1:3d}  loss {loss.item():.5f}  val ndcg@10 {ndcg:.4f}", flush=True)
     if ndcg > best:
-        best, best_state = ndcg, copy.deepcopy(model.state_dict())
+        best, best_epoch, best_state = ndcg, epoch, copy.deepcopy(model.state_dict())
+    if epoch - best_epoch >= PATIENCE:
+        break
 
 model.load_state_dict(best_state)
 validation["score"] = score(model, val_num, val_cat)

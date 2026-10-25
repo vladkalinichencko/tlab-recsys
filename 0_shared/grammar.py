@@ -4,7 +4,6 @@ A spec is (entity, column, aggregate, window). Window None is the whole history,
 age is days from the event to the window start, count ignores the column.
 """
 import itertools
-import json
 
 import numpy as np
 import pandas as pd
@@ -31,9 +30,6 @@ def all_specs():
         for column, aggregate in itertools.product(COLUMNS, AGGREGATES):
             yield (entity, column, aggregate, window)
 
-
-def load(path):
-    return [tuple(spec) for spec in json.load(open(path))]
 
 
 def build(frame, history, start, specs, items):

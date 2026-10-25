@@ -1,4 +1,3 @@
-import numpy as np
 
 import candidates
 import features
@@ -24,12 +23,9 @@ def prepare(name):
     return start, history, scored_users, pool_items, frame
 
 
-def table(name, specs=(), max_users=None):
-    """specs adds grammar features, max_users keeps a random subset of users (for feature selection)."""
+def table(name, specs=()):
+    """specs adds grammar features."""
     start, history, scored_users, pool_items, frame = prepare(name)
-    if max_users is not None and len(scored_users) > max_users:
-        scored_users = np.sort(np.random.default_rng(0).choice(scored_users, max_users, replace=False))
-        frame = frame[frame["user"].isin(scored_users)].reset_index(drop=True)
     interactions = candidates.matrix(history, SHAPE)
     frame["ease"] = candidates.scores(
         scored_users, pool_items, interactions, candidates.ease(interactions)

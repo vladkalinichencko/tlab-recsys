@@ -2,10 +2,7 @@
 
     all          hand features + EASE and kNN scores
     hand         hand features only
-    grammar      all + every grammar feature (grammar.all_specs)
     auto         no hand features: the raw user and item columns + every grammar feature
-    openfe       all + the grammar features select_openfe.py chose
-    within_user  only what the user's own history gives: no item counters, no item share, no CF
 """
 from catboost import Pool
 
@@ -19,12 +16,10 @@ def feature_set(name, table):
     hand = [column for column in everything if column not in CF]
     if name == "auto":
         return [column for column in everything if column.startswith("g.") or column in RAW]
-    if name in ("all", "grammar", "openfe"):
+    if name == "all":
         return everything
     if name == "hand":
         return hand
-    if name == "within_user":
-        return [column for column in hand if not column.startswith("i_") and column != "item_share"]
     raise ValueError(name)
 
 

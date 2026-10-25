@@ -1,12 +1,11 @@
-"""Neural baselines with the boosting's split, pool and label, one training loop for all.
+"""Autoregressive transformer over the user's history, with the boosting's split, pool and label.
 
-    python3 4_neural/train_neural.py {autoencoder,bag,lstm,transformer}
+    python3 4_neural/train_neural.py transformer
 
 Trained on the fit window (input: history before it, target: watched pool items in it),
-every encoder trains for the same EPOCHS, the val ndcg@10 curve goes into the report,
-and the epoch with the best val ndcg@10 is scored on test. No hand features.
-autoencoder and bag see no order of events, so lstm or transformer minus bag is
-what the order gives on its own. The transformer is autoregressive (SASRec, Kang & McAuley 2018):
+training stops PATIENCE epochs after the best val ndcg@10 (at most EPOCHS), the val ndcg@10 curve
+goes into the report, and the epoch with the best val ndcg@10 is scored on test. No hand features.
+The transformer is autoregressive (SASRec, Kang & McAuley 2018):
 besides the window label its loss holds the cross-entropy of the next event's item at every slot
 of the history, scored against the same item vectors that score the pool.
 """
@@ -26,6 +25,7 @@ import stage
 
 ENCODER = sys.argv[1]
 EPOCHS = int(os.environ.get("EPOCHS", 30))
+PATIENCE = 3
 BATCH = 256
 LR = 1e-3
 SCORE_CHUNK = 4096
@@ -111,6 +111,8 @@ for epoch in range(EPOCHS):
     print(f"epoch {epoch + 1:3}  loss {np.mean(losses):.5f}  val ndcg@10 {ndcg:.4f}", flush=True)
     if ndcg > best_ndcg:
         best_ndcg, best_epoch, best_state = ndcg, epoch + 1, copy.deepcopy(model.state_dict())
+    if epoch + 1 - best_epoch >= PATIENCE:
+        break
 
 model.load_state_dict(best_state)
 probe_rows, probe_table = probes.pairs()

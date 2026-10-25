@@ -1,28 +1,45 @@
 #!/bin/bash
-# The slow half of the KION comparison, on one A100: three TabICL variants, TabM and the autoregressive
-# transformer, all at once.
-# Each TabICL run holds 27.6M parameters and batches of 16 tables of 65 rows, a few GB of the
-# 64 GB budget, so the five runs share the card in parallel (one background process each, about 1.5 h).
+# The slow half of the comparison, on one A100: three TabICL variants, TabM and the autoregressive
+# transformer, on KION (.) and on both Yambda tasks (runs/yambda_listen, runs/yambda_like) by default,
+# or on the run directories given as arguments.
+# Each model is one background process that goes through the datasets one after another, so five
+# processes share the card at any time: a TabICL run holds 27.6M parameters and batches of 16 tables
+# of 65 rows, a few GB each; the Yambda transformer (512 events, 20K tracks) peaks near 30 GB.
 # The runs are detached with setsid, so they outlive the terminal (no tmux needed).
-# On the machine (the prepared KION tables data/*.parquet are in the repository):
+# On the machine (the prepared tables data/*.parquet and runs/yambda_*/data/*.parquet are in the repository):
 #     git clone https://github.com/vladkalinichencko/tlab-recsys.git recsys
 #     cd recsys && pip install -r requirements.txt && bash run_comparison.sh
-#     tail -f logs/tabicl_softmax.log          # progress of one run
-#     grep -h "val ndcg" logs/*.log | tail     # last val numbers of all runs
+#     bash run_a100.sh runs/yambda_listen runs/yambda_like   # Yambda only
+#     tail -f logs/tabicl_softmax.log                        # progress of one run
+#     grep -h "val ndcg" logs/*.log runs/*/logs/*.log | tail # last val numbers of all runs
 set -eo pipefail
 cd "$(dirname "$0")"
-mkdir -p logs models
-export PYTHONPATH="$PWD/0_shared:$PWD/3_boosting:$PWD/4_neural"
+ROOT=$PWD
+export PYTHONPATH="$ROOT/0_shared:$ROOT/3_boosting:$ROOT/4_neural"
 python3 -c "import torch; assert torch.cuda.is_available(), 'torch sees no GPU'; print(torch.cuda.get_device_name())"
+if [ $# -eq 0 ]; then set -- . runs/yambda_listen runs/yambda_like; fi
 
 run() { setsid nohup bash -c "$1" > /dev/null 2>&1 & }
-job() { echo "python3 -u $1 2>&1 | grep --line-buffered -v Warning > logs/$2.log"; }
+job() {
+    local dir=$1 name=$2 script=$3
+    shift 3
+    # a Yambda user has a median of 1.7K events, the nets read the last 512
+    local events=""
+    [[ $dir == runs/yambda_* ]] && events="MAX_EVENTS=512 "
+    echo "cd '$ROOT/$dir' && mkdir -p logs models reports && ${events}python3 -u '$ROOT/$script' $* 2>&1 | grep --line-buffered -v Warning > logs/$name.log"
+}
+chain() {
+    local commands=""
+    for dir in "${DATASETS[@]}"; do commands="$commands${commands:+; }$(job "$dir" "$@")"; done
+    echo "$commands"
+}
+DATASETS=("$@")
 
-run "$(job '4_neural/train_tabm.py all' tabm_all); $(job '4_neural/train_tabm.py auto' tabm_auto)"
+run "$(chain tabm_all 4_neural/train_tabm.py all); $(chain tabm_auto 4_neural/train_tabm.py auto)"
 for variant in softmax counts gates; do
-    run "$(job "4_neural/train_relational.py $variant" "tabicl_$variant")"
+    run "$(chain "tabicl_$variant" 4_neural/train_relational.py "$variant")"
 done
-run "$(job '4_neural/train_neural.py transformer' neural_transformer)"
+run "$(chain neural_transformer 4_neural/train_neural.py transformer)"
 
 sleep 2
 pgrep -af "train_" || true

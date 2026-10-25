@@ -14,7 +14,8 @@ matching rows reaches the output; gates is softmax with a stochastic gate on eve
 columns the model needs. All three fine-tune from the same weights.
 
 Epoch 0 is the pretrained model as is (zero-shot), every epoch after it is STEPS fine-tuning
-steps; the epoch with the best val ndcg@10 on VAL_USERS users is scored on the test users of
+steps; training stops PATIENCE epochs after the best val ndcg@10 on VAL_USERS users (at most
+EPOCHS), and the best epoch is scored on the test users of
 metrics.eval_users, the same users every other model reports as subset_*.
 
 Batches hold half positive pairs and half negative ones, since one random batch has 0.1 positive
@@ -47,6 +48,7 @@ STEPS = int(os.environ.get("STEPS", 200))
 VAL_USERS = int(os.environ.get("VAL_USERS", 50))
 BATCH = 16
 SCORE_BATCH = 128
+PATIENCE = 3
 LR = 1e-5
 GATE_LR = 1e-2
 LAMBDA = 0.01
@@ -133,6 +135,8 @@ for epoch in range(EPOCHS + 1):
     print(f"epoch {epoch}  val ndcg@10 {ndcg:.4f}", flush=True)
     if ndcg > best:
         best, best_state, best_shift = ndcg, copy.deepcopy(model.state_dict()), shift
+    if epoch - int(np.argmax(curve)) >= PATIENCE:
+        break
 
 model.load_state_dict(best_state)
 probe_rows, probe_table = probes.pairs()

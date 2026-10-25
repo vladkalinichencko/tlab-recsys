@@ -1,16 +1,13 @@
-"""Gradient boosting on hand features: which loss, which feature set.
+"""Gradient boosting with the listwise YetiRank loss inside each user's group: which feature set.
 
-    python3 3_boosting/train_boosting.py {pointwise,yetirank} {all,hand,within_user,grammar,auto,openfe}
+    python3 3_boosting/train_boosting.py {all,hand,auto}
 
-pointwise  binary log loss on each pair, the score is a probability
-yetirank   listwise loss inside each user's group
 Feature sets are in boosting.py. Every run is the same CatBoost with the same number of trees,
 the tree with the best val ndcg@10 is kept, and the val curve is in logs/catboost/<name>,
-so two runs differ by the loss or by the feature set alone.
+so two runs differ by the feature set alone.
 """
 import sys
 
-import numpy as np
 from catboost import CatBoost
 
 import boosting
@@ -18,11 +15,10 @@ import grammar
 import metrics
 import stage
 
-LOSS, FEATURES = sys.argv[1], sys.argv[2]
-NAME = f"boosting_{LOSS}_{FEATURES}"
-LOSSES = {"pointwise": "Logloss", "yetirank": "YetiRank"}
+FEATURES = sys.argv[1]
+NAME = f"boosting_yetirank_{FEATURES}"
 PARAMS = dict(
-    loss_function=LOSSES[LOSS],
+    loss_function="YetiRank",
     eval_metric="NDCG:top=10;type=Exp",
     iterations=1000,
     learning_rate=0.1,
@@ -35,11 +31,10 @@ PARAMS = dict(
 
 
 def score(model, table):
-    raw = model.predict(boosting.pool(table, columns))
-    return 1.0 / (1.0 + np.exp(-raw)) if LOSS == "pointwise" else raw
+    return model.predict(boosting.pool(table, columns))
 
 
-specs = {"grammar": list(grammar.all_specs()), "auto": list(grammar.all_specs()), "openfe": grammar.load("logs/openfe_selected.json") if FEATURES == "openfe" else []}.get(FEATURES, ())
+specs = list(grammar.all_specs()) if FEATURES == "auto" else ()
 fit, validation, test = (stage.table(name, specs) for name in ("fit", "val", "test"))
 columns = boosting.feature_set(FEATURES, fit)
 

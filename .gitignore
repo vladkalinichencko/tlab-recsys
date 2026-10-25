@@ -9,6 +9,12 @@ data/*
 models/
 logs/
 reports/
-runs/
+runs/*
+!runs/yambda_listen/
+!runs/yambda_like/
+runs/yambda_*/*
+!runs/yambda_*/data/
+runs/yambda_*/data/*
+!runs/yambda_*/data/*.parquet
 __pycache__/
 *.pyc
