@@ -1,33 +1,31 @@
 # tlab-recsys
 
-Отчёт лежит в [report.md](report.md), здесь только как всё запустить.
-
-Зависимости ставятся одной командой:
+Отчёт лежит в [report.md](report.md), здесь только запуск. Все команды запускай из корня репозитория.
 
 ```bash
 pip install -r requirements.txt
 ```
 
-Датасетов в репозитории нет. KION берётся из [KION_DATASET](https://github.com/irsafilo/KION_DATASET), и `interactions.csv`, `users.csv`, `items.csv` кладутся в `data/raw/`. Yambda берётся с [Hugging Face](https://huggingface.co/datasets/yandex/yambda): нужны `flat/50m/listens.parquet` и `flat/50m/likes.parquet` в `data/yambda/`.
+Готовые таблицы KION (`data/*.parquet`) и Yambda (`runs/yambda_listen/data`, `runs/yambda_like/data`) лежат в репозитории, так что исходники качать не нужно. Сравнение моделей на всех трёх наборах запускает один скрипт. На Маке он вызывает `run_mac.sh` с популярностью, EASE и CatBoost, на машине с картой NVIDIA вызывает `run_a100.sh` с TabM, тремя вариантами TabICL и трансформером:
 
-Весь KION от сэмпла до итоговых метрик запускает один скрипт. Он готовит данные, проверяет, что нет утечки, и запускает `run_comparison.sh`: на Маке популярность, EASE и CatBoost, на машине с картой NVIDIA TabM, три варианта TabICL и авторегрессионный трансформер:
+```bash
+bash run_comparison.sh
+```
+
+Чтобы посчитать только часть наборов, передай их папки, например `bash run_comparison.sh .` для KION или `bash run_comparison.sh runs/yambda_like`. На A100 модели идут в фоне, логи пишутся в `logs/`.
+
+Если хочешь собрать таблицы заново из исходников, KION берётся из [KION_DATASET](https://github.com/irsafilo/KION_DATASET) в `data/raw/`, Yambda берётся с [Hugging Face](https://huggingface.co/datasets/yandex/yambda) в `data/yambda/`. Дальше `run.sh` готовит KION, проверяет утечку и запускает сравнение, а `run_yambda.sh` делает то же для одной задачи Yambda:
 
 ```bash
 bash run.sh
 ```
 
-Yambda идёт двумя задачами, прослушивание и лайк, и у каждой своя папка `runs/yambda_<задача>`:
-
 ```bash
 bash run_yambda.sh listen
 ```
 
-Yambda я гонял локально на Маке, поэтому `1_data/prep_yambda.py` режет данные сильнее, чем на KION. Он оставляет 20 тысяч треков с самым большим числом слушателей и тысячу пользователей с самой длинной историей, иначе EASE и прогон целиком не влезают в память и в час. Атрибутов пользователя в Yambda нет, а у трека вместо жанра и страны идут артист и альбом. Метку скрипт берёт как в статье Yambda: прослушивание хотя бы половины трека для `listen` и лайк для `like`. Дальше `run_comparison.sh` обучает в папке задачи те же модели, что и на KION. Готовые таблицы обеих задач лежат в репозитории, так что `bash run_comparison.sh` без аргументов сразу считает KION и обе задачи Yambda.
-
-Графики для отчёта рисует отдельный скрипт, он читает `reports/` и `logs/` и пишет картинки в `5_report/figures/`:
+Графики для отчёта рисуются из `reports/` и `logs/` в `5_report/figures/`:
 
 ```bash
 python3 5_report/figures.py
 ```
-
-Код разложен по шагам: `0_shared` содержит общее (окна, кандидаты, признаки, метрики), `1_data` готовит данные, `2_baselines` хранит популярность и EASE, `3_boosting` хранит CatBoost, `4_neural` хранит нейросети, `5_report` хранит отчёт и графики. Любой скрипт запускай из корня репозитория.
