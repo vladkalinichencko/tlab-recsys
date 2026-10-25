@@ -38,6 +38,8 @@ def r2(hidden_ND, table):
         if "_events_" in name or "_watched_" in name:
             target = np.log1p(target)
         known = ~np.isnan(target)
+        if not known.any():  # year_gap on Yambda, which has no release years
+            continue
         fit, held = known.copy(), known.copy()
         fit[half:], held[:half] = False, False
         ridge = RidgeCV(alphas=np.logspace(-2, 3, 6)).fit(hidden_ND[fit], target[fit])
