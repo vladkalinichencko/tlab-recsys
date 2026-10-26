@@ -1,5 +1,7 @@
 import pandas as pd
 
+from schema import dataset
+
 WINDOWS = {"7d": 7, "30d": 30, "all": None}
 
 
@@ -27,7 +29,7 @@ def user_stats(history, start):
             "u_watched": ("watched", "sum"),
             "u_pct": ("watched_pct", "mean"),
             "u_items": ("item", "nunique"),
-            "u_year": ("release_year", "mean"),
+            **dataset.USER_AGGREGATES,
             "u_last": ("day", "max"),
         },
     )
@@ -61,31 +63,6 @@ def pair_stats(history, start):
     )
 
 
-def genre_stats(history, start):
-    return blocks(
-        history,
-        start,
-        ["user", "genre"],
-        {
-            "ug_events": ("day", "size"),
-            "ug_watched": ("watched", "sum"),
-            "ug_pct": ("watched_pct", "mean"),
-        },
-    )
-
-
-def country_stats(history, start):
-    return blocks(
-        history,
-        start,
-        ["user", "country"],
-        {
-            "uc_events": ("day", "size"),
-            "uc_watched": ("watched", "sum"),
-        },
-    )
-
-
 def build(candidates, history, start, users, items):
     history = history.merge(items, on="item")
     table = (
@@ -94,9 +71,9 @@ def build(candidates, history, start, users, items):
         .merge(user_stats(history, start), on="user", how="left")
         .merge(item_stats(history, start), on="item", how="left")
         .merge(pair_stats(history, start), on=["user", "item"], how="left")
-        .merge(genre_stats(history, start), on=["user", "genre"], how="left")
-        .merge(country_stats(history, start), on=["user", "country"], how="left")
     )
+    for group, aggregations in dataset.GROUPS.items():
+        table = table.merge(blocks(history, start, ["user", group], aggregations), on=["user", group], how="left")
 
     # no events in a window means zero counts; means and last day over no events stay NaN
     keys = ["user", "item", "label"]
@@ -107,8 +84,9 @@ def build(candidates, history, start, users, items):
     table[numeric] = table[numeric].astype("float32")
     table[counts] = table[counts].fillna(0)
     table["days_since_last"] = start - table["u_last_all"]
-    table["year_gap"] = table["release_year"] - table["u_year_all"]
-    table["genre_share"] = table["ug_watched_all"] / (table["u_watched_all"] + 1)
-    table["country_share"] = table["uc_watched_all"] / (table["u_watched_all"] + 1)
+    for name, (column, aggregate) in dataset.GAPS.items():
+        table[name] = table[column] - table[aggregate]
+    for name, count in dataset.SHARES.items():
+        table[name] = table[count] / (table["u_watched_all"] + 1)
     table["item_share"] = table["i_watched_7d"] / (table["i_watched_all"] + 1)
     return table

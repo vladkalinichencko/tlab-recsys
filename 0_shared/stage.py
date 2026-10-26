@@ -2,17 +2,17 @@
 import candidates
 import features
 import grammar
-import kion
+import windows
 
-events, users, items = kion.load()
+events, users, items = windows.load()
 SHAPE = (len(users), len(items))
-STAGES = kion.stages(events)
+STAGES = windows.stages(events)
 
 
 def prepare(name):
     start, end = STAGES[name]
-    history = kion.history(events, start)
-    target = kion.target(events, start, end)
+    history = windows.history(events, start)
+    target = windows.target(events, start, end)
     scored_users, pool_items = candidates.select(history, target)
     frame = candidates.frame(scored_users, pool_items, target, SHAPE)
     print(

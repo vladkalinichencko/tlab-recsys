@@ -3,7 +3,7 @@
     python3 4_neural/train_relational.py {softmax,counts,gates}
 
 The table of a pair (u, p) is built by contexts.py: labeled pairs of the window before, (u, f) for
-films f and (v, p) for users v, each labeled with whether it was watched in that window, then the
+items f and (v, p) for users v, each labeled with whether it was watched in that window, then the
 pair itself as the last row. The context asks the same question the pair asks. No hand features.
 
 TabICL reads a table column by column (distribution of each feature), then row by row (between

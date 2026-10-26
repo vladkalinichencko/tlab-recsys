@@ -5,7 +5,8 @@ Missing user attributes become the category "unknown"; missing release year and 
 import numpy as np
 import pandas as pd
 
-from kion import PREP, WATCHED_PCT, read_raw
+from kion import WATCHED_PCT, read_raw
+from windows import PREP
 
 N_USERS = 100_000
 MIN_ITEM_EVENTS = 5

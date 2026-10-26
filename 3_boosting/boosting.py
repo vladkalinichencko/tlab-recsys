@@ -6,9 +6,11 @@
 """
 from catboost import Pool
 
-CATEGORICAL = ["age", "income", "sex", "content_type", "genre", "country"]
+from schema import dataset
+
+CATEGORICAL = dataset.CATEGORICAL
 CF = ("ease", "knn")
-RAW = ["age", "income", "sex", "kids_flg", "content_type", "release_year", "age_rating", "genre", "country"]
+RAW = [*dataset.USER_COLUMNS, *dataset.ITEM_COLUMNS, *dataset.GROUPS]
 
 
 def feature_set(name, table):

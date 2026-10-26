@@ -8,12 +8,13 @@ import itertools
 import numpy as np
 import pandas as pd
 
+from schema import dataset
+
 ENTITIES = {
     "user": ["user"],
     "item": ["item"],
     "pair": ["user", "item"],
-    "user_genre": ["user", "genre"],
-    "user_country": ["user", "country"],
+    **{f"user_{group}": ["user", group] for group in dataset.GROUPS},
 }
 COLUMNS = ("watched", "watched_pct", "age")
 AGGREGATES = ("sum", "mean", "max", "min", "std")
@@ -33,7 +34,7 @@ def all_specs():
 
 
 def build(frame, history, start, specs, items):
-    attributes = items[["item", "genre", "country"]]
+    attributes = items[["item", *dataset.GROUPS]]
     history = history.merge(attributes, on="item")
     history["watched"] = history["watched"].astype(np.float32)
     history["age"] = (start - history["day"]).astype(np.float32)
@@ -54,4 +55,4 @@ def build(frame, history, start, specs, items):
         empty = [name(spec) for spec in block if spec[2] in ("count", "sum")]
         table[empty] = table[empty].fillna(0)
 
-    return table.drop(columns=["genre", "country"])
+    return table.drop(columns=list(dataset.GROUPS))

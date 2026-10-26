@@ -2,7 +2,7 @@
 import pandas as pd
 
 import features
-import kion
+import windows
 import metrics
 
 START = 3
@@ -37,9 +37,9 @@ ITEMS = pd.DataFrame(
 )
 CANDIDATES = pd.DataFrame({"user": [1], "item": [1], "label": [1]})
 
-past = features.build(CANDIDATES, kion.history(EVENTS, START), START, USERS, ITEMS)
+past = features.build(CANDIDATES, windows.history(EVENTS, START), START, USERS, ITEMS)
 dropped = features.build(
-    CANDIDATES, kion.history(EVENTS[EVENTS["day"] != 5], START), START, USERS, ITEMS
+    CANDIDATES, windows.history(EVENTS[EVENTS["day"] != 5], START), START, USERS, ITEMS
 )
 whole = features.build(CANDIDATES, EVENTS, START, USERS, ITEMS)
 
@@ -47,7 +47,7 @@ assert past.equals(dropped)
 assert not past.equals(whole)
 assert past["ui_watched_all"].item() == 0
 assert whole["ui_watched_all"].item() == 1
-assert kion.target(EVENTS, START, 6)["day"].to_list() == [5]
+assert windows.target(EVENTS, START, 6)["day"].to_list() == [5]
 
 perfect = pd.DataFrame(
     {"user": [0, 0, 0], "item": [0, 1, 2], "label": [1, 1, 0], "score": [0.9, 0.8, 0.1]}

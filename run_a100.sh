@@ -23,10 +23,10 @@ run() { setsid nohup bash -c "$1" > /dev/null 2>&1 & }
 job() {
     local dir=$1 name=$2 script=$3
     shift 3
-    # a Yambda user has a median of 1.7K events, the nets read the last 512
-    local events=""
-    [[ $dir == runs/yambda_* ]] && events="MAX_EVENTS=512 "
-    echo "cd '$ROOT/$dir' && mkdir -p logs models reports && ${events}python3 -u '$ROOT/$script' $* 2>&1 | grep --line-buffered -v Warning > logs/$name.log"
+    # Yambda has its own schema (0_shared/yambda.py); a Yambda user has a median of 1.7K events, the nets read the last 512
+    local yambda=""
+    [[ $dir == runs/yambda_* ]] && yambda="DATASET=yambda MAX_EVENTS=512 "
+    echo "cd '$ROOT/$dir' && mkdir -p logs models reports && ${yambda}python3 -u '$ROOT/$script' $* 2>&1 | grep --line-buffered -v Warning > logs/$name.log"
 }
 chain() {
     local commands=""

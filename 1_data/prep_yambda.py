@@ -1,4 +1,4 @@
-"""Yambda-50M -> data/*.parquet in the KION schema, one task per run directory.
+"""Yambda-50M -> data/*.parquet in the schema of yambda.py, one task per run directory.
 
     cd runs/yambda_listen && PYTHONPATH=../../0_shared python3 ../../1_data/prep_yambda.py listen
     cd runs/yambda_like   && PYTHONPATH=../../0_shared python3 ../../1_data/prep_yambda.py like
@@ -9,9 +9,8 @@ listen  a listen with played_ratio_pct >= 50 (Listen+ of the Yambda paper)
 like    a like
 The catalog is cut to the CATALOG tracks with most listeners before the test window;
 events on other tracks are dropped. Only the USERS users with most events before the test window are kept,
-so a whole run fits in an hour. Artist and album go into the KION columns genre and country,
-users have no attributes. Artist and album stay integer ids, so the 30M-row history
-does not carry Python strings; boosting.pool turns them into categories.
+so a whole run fits in an hour. Users have no attributes; a track has its artist and album,
+integer ids, so the 30M-row history does not carry Python strings; boosting.pool turns them into categories.
 """
 import sys
 from pathlib import Path
@@ -19,7 +18,7 @@ from pathlib import Path
 import numpy as np
 import pandas as pd
 
-from kion import PREP, TEST_DAYS
+from windows import PREP, TEST_DAYS
 
 TASK = sys.argv[1]
 RAW = Path(__file__).resolve().parents[1] / "data/yambda"
@@ -69,15 +68,7 @@ events = (
     .drop(columns="timestamp")
 )
 
-users = pd.DataFrame(
-    {
-        "user": np.arange(len(user_ids), dtype=np.int32),
-        "age": "unknown",
-        "income": "unknown",
-        "sex": "unknown",
-        "kids_flg": np.int8(0),
-    }
-)
+users = pd.DataFrame({"user": np.arange(len(user_ids), dtype=np.int32)})
 
 # a track with several artists or albums keeps the first one
 artist = pd.read_parquet(RAW / "artist_item_mapping.parquet").drop_duplicates("item_id").set_index("item_id")["artist_id"]
@@ -85,11 +76,8 @@ album = pd.read_parquet(RAW / "album_item_mapping.parquet").drop_duplicates("ite
 items = pd.DataFrame(
     {
         "item": np.arange(len(item_ids), dtype=np.int32),
-        "content_type": "track",
-        "release_year": np.float32(np.nan),
-        "age_rating": np.float32(np.nan),
-        "genre": artist.reindex(item_ids).fillna(-1).to_numpy(np.int64),
-        "country": album.reindex(item_ids).fillna(-1).to_numpy(np.int64),
+        "artist": artist.reindex(item_ids).fillna(-1).to_numpy(np.int64),
+        "album": album.reindex(item_ids).fillna(-1).to_numpy(np.int64),
     }
 )
 

@@ -13,7 +13,10 @@ if [ $# -eq 0 ]; then set -- . runs/yambda_listen runs/yambda_like; fi
 job() {
     local dir=$1 name=$2 script=$3
     shift 3
-    echo "cd '$ROOT/$dir' && mkdir -p logs models reports && PYTHONPATH='$PYTHONPATH' python3 -u '$ROOT/$script' $* 2>&1 | grep --line-buffered -v Warning | tee logs/$name.log"
+    # Yambda has its own schema (0_shared/yambda.py)
+    local yambda=""
+    [[ $dir == runs/yambda_* ]] && yambda="DATASET=yambda "
+    echo "cd '$ROOT/$dir' && mkdir -p logs models reports && ${yambda}PYTHONPATH='$PYTHONPATH' python3 -u '$ROOT/$script' $* 2>&1 | grep --line-buffered -v Warning | tee logs/$name.log"
 }
 
 commands=""

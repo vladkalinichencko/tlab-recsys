@@ -11,13 +11,10 @@ from sklearn.metrics import r2_score
 
 import features
 import stage
+from schema import dataset
 
 PAIRS = 4000
-TARGETS = [
-    "u_events_all", "u_watched_all", "days_since_last",
-    "i_watched_7d", "i_watched_all", "i_rate_all", "item_share",
-    "ui_events_all", "ug_watched_all", "uc_watched_all", "genre_share", "country_share", "year_gap",
-]
+TARGETS = dataset.PROBES
 
 
 def pairs():
@@ -38,8 +35,6 @@ def r2(hidden_ND, table):
         if "_events_" in name or "_watched_" in name:
             target = np.log1p(target)
         known = ~np.isnan(target)
-        if not known.any():
-            continue
         fit, held = known.copy(), known.copy()
         fit[half:], held[:half] = False, False
         ridge = RidgeCV(alphas=np.logspace(-2, 3, 6)).fit(hidden_ND[fit], target[fit])
