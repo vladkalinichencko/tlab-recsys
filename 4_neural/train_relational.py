@@ -1,6 +1,6 @@
 """Pretrained TabICL v2 (Qu et al. 2025) over the relational context of each pair, then fine-tuned on KION.
 
-    python3 4_neural/train_relational.py {softmax,counts,gates}
+    python3 4_neural/train_relational.py {softmax,counts,gates,full}
 
 The table of a pair (u, p) is built by contexts.py: labeled pairs of the window before, (u, f) for
 items f and (v, p) for users v, each labeled with whether it was watched in that window, then the
@@ -11,7 +11,8 @@ the features of a row), then across rows (between pairs). softmax keeps TabICL a
 counts swaps its attention between rows for SiLU / n (counting_attention.py), so the number of
 matching rows reaches the output; gates is softmax with a stochastic gate on every column
 (stochastic_gates.py), the penalty LAMBDA · open gates in the loss, so the report says which
-columns the model needs. All three fine-tune from the same weights.
+columns the model needs; full is the whole model: the gates and both kinds of attention between rows,
+softmax in half of the heads and SiLU / n in the other half. All four fine-tune from the same weights.
 
 Epoch 0 is the pretrained model as is (zero-shot), every epoch after it is STEPS fine-tuning
 steps; training stops PATIENCE epochs after the best val ndcg@10 on VAL_USERS users (at most
@@ -64,9 +65,9 @@ def pretrained(variant):
     model = TabICL(**checkpoint["config"])
     model.load_state_dict(checkpoint["state_dict"])
 
-    if variant == "counts":
-        counting_attention.use(model)
-    model.gates = stochastic_gates.Gates(len(contexts.COLUMNS)) if variant == "gates" else torch.nn.Identity()
+    if variant in ("counts", "full"):
+        counting_attention.use(model, variant == "full")
+    model.gates = stochastic_gates.Gates(len(contexts.COLUMNS)) if variant in ("gates", "full") else torch.nn.Identity()
     return model.to(DEVICE).train()
 
 
@@ -123,7 +124,7 @@ for epoch in range(EPOCHS + 1):
         pairs = np.concatenate([rng.choice(positive, BATCH // 2), rng.choice(negative, BATCH // 2)])
         logit_B, label_B = logit(model, fit, pairs)
         loss = F.binary_cross_entropy_with_logits(logit_B, label_B.float())
-        if VARIANT == "gates":
+        if VARIANT in ("gates", "full"):
             loss = loss + LAMBDA * model.gates.open()
         optimizer.zero_grad()
         loss.backward()
@@ -149,7 +150,7 @@ extras = {
     "probe_r2": probes.r2(pair_state(model, val, probe_rows), probe_table),
     "probe_r2_pretrained": probes.r2(pair_state(pretrained("softmax" if VARIANT == "gates" else VARIANT), val, probe_rows), probe_table),
 }
-if VARIANT == "gates":
+if VARIANT in ("gates", "full"):
     extras["gates"] = dict(zip(contexts.COLUMNS, model.gates.mu.clamp(0, 1).tolist()))
 torch.save(best_state, f"models/{NAME}.pt")
 metrics.report(NAME, score(model, test, test_users, best_shift), "score", extras)

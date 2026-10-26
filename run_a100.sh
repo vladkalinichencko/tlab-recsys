@@ -1,8 +1,8 @@
 #!/bin/bash
-# The slow half of the comparison, on one A100: three TabICL variants, TabM and the autoregressive
+# The slow half of the comparison, on one A100: four TabICL variants, TabM and the autoregressive
 # transformer, on KION (.) and on both Yambda tasks (runs/yambda_listen, runs/yambda_like) by default,
 # or on the run directories given as arguments.
-# Each model is one background process that goes through the datasets one after another, so five
+# Each model is one background process that goes through the datasets one after another, so six
 # processes share the card at any time: a TabICL run holds 27.6M parameters and batches of 16 tables
 # of 65 rows, a few GB each; the Yambda transformer (512 events, 20K tracks) peaks near 30 GB.
 # The runs are detached with setsid, so they outlive the terminal (no tmux needed).
@@ -36,7 +36,7 @@ chain() {
 DATASETS=("$@")
 
 run "$(chain tabm_all 4_neural/train_tabm.py all); $(chain tabm_auto 4_neural/train_tabm.py auto)"
-for variant in softmax counts gates; do
+for variant in softmax counts gates full; do
     run "$(chain "tabicl_$variant" 4_neural/train_relational.py "$variant")"
 done
 run "$(chain neural_transformer 4_neural/train_neural.py transformer)"
