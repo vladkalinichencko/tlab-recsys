@@ -18,9 +18,11 @@ both = False
 def counting_attention(q, k, v, attn_mask=None, dropout_p=0.0, ssmax_layer=None):
     if not active:
         return softmax_attention(q, k, v, attn_mask, dropout_p, ssmax_layer)
+
     counts = silu_attention(q, k, v, attn_mask, ssmax_layer)
     if not both:
         return counts
+
     shares = softmax_attention(q, k, v, attn_mask, dropout_p, ssmax_layer)
     heads = q.size(-3)
     return torch.cat([shares[..., : heads // 2, :, :], counts[..., heads // 2 :, :, :]], -3)
@@ -50,6 +52,7 @@ def switch(on):
 def use(model, both_kinds=False):
     global both
     both = both_kinds
+
     attention.sdpa_with_flattened_batch = counting_attention
     model.icl_predictor.register_forward_pre_hook(lambda *_: switch(True))
     model.icl_predictor.register_forward_hook(lambda *_: switch(False))

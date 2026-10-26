@@ -43,6 +43,7 @@ model.save_model(f"models/{NAME}.cbm")
 
 validation["score"] = score(model, validation)
 test["score"] = score(model, test)
+
 metrics.report(
     NAME,
     test,

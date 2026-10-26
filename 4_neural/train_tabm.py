@@ -34,6 +34,7 @@ torch.manual_seed(0)
 specs = list(grammar.all_specs()) if FEATURES == "auto" else ()
 fit, validation, test = (stage.table(name, specs) for name in ("fit", "val", "test"))
 columns = boosting.feature_set(FEATURES, fit)
+
 categorical = [column for column in boosting.CATEGORICAL if column in columns]
 numeric = [column for column in columns if column not in categorical]
 
@@ -64,6 +65,7 @@ def score(model, x_num, x_cat):
 fit_num, fit_cat = tensors(fit)
 val_num, val_cat = tensors(validation)
 test_num, test_cat = tensors(test)
+
 label = torch.from_numpy(fit["label"].to_numpy(np.float32))
 
 model = TabM.make(
@@ -72,16 +74,19 @@ model = TabM.make(
     d_out=1,
     k=K,
 ).to(DEVICE)
+
 optimizer = torch.optim.AdamW(model.parameters(), lr=2e-3, weight_decay=3e-4)
 
 best, best_epoch, best_state, curve = -1.0, 0, None, []
 for epoch in range(EPOCHS):
     model.train()
+
     order = torch.randperm(len(label))
     for i in range(0, len(order), BATCH):
         rows = order[i : i + BATCH]
         logits = model(fit_num[rows].to(DEVICE), fit_cat[rows].to(DEVICE)).squeeze(-1)  # (B, K)
         loss = F.binary_cross_entropy_with_logits(logits, label[rows, None].expand(-1, K).to(DEVICE))
+
         optimizer.zero_grad()
         loss.backward()
         optimizer.step()
@@ -90,14 +95,17 @@ for epoch in range(EPOCHS):
     ndcg = metrics.ranking(validation, "score")["ndcg@10"]
     curve.append(ndcg)
     print(f"epoch {epoch + 1:3d}  loss {loss.item():.5f}  val ndcg@10 {ndcg:.4f}", flush=True)
+
     if ndcg > best:
         best, best_epoch, best_state = ndcg, epoch, copy.deepcopy(model.state_dict())
     if epoch - best_epoch >= PATIENCE:
         break
 
 model.load_state_dict(best_state)
+
 validation["score"] = score(model, val_num, val_cat)
 test["score"] = score(model, test_num, test_cat)
+
 metrics.report(
     NAME,
     test,

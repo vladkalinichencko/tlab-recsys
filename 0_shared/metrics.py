@@ -46,6 +46,7 @@ def scores(candidates, score):
     label = candidates["label"].to_numpy()
     value = candidates[score].to_numpy().astype(np.float64)
     calibrated = value.min() >= 0.0 and value.max() <= 1.0
+
     return {
         "users": int(candidates["user"].nunique()),
         "candidates": len(candidates),
@@ -64,6 +65,7 @@ def report(name, candidates, score, extra=None):
         **{f"subset_{key}": value for key, value in scores(subset, score).items()},
         **(extra or {}),
     }
+
     candidates[["user", "item", "label", score]].to_parquet(f"{REPORTS}/{name}_scores.parquet")
     with open(f"{REPORTS}/{name}.json", "w") as file:
         json.dump(result, file, indent=2)

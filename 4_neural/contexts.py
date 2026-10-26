@@ -79,6 +79,7 @@ class Past:
     def __init__(self, start):
         history = windows.history(stage.events, start)
         self.seen = binary(history)
+
         self.user_events = np.log1p(np.bincount(history["user"], minlength=stage.SHAPE[0])).astype(np.float32)
         self.item_events = np.log1p(np.bincount(history["item"], minlength=stage.SHAPE[1])).astype(np.float32)
         self.pool = candidates.popular(history).index.to_numpy()
@@ -101,13 +102,16 @@ class Stage:
     def __init__(self, name):
         start, _, _, _, self.frame = stage.prepare(name)
         self.now, self.before = Past(start), Past(start - DAYS)
+
         earlier = windows.target(stage.events, start - DAYS, start)
         self.answer = binary(earlier)
         self.by_user, self.by_item = self.answer.tocsr(), self.answer.tocsc()
         self.active = np.unique(earlier["user"])
+
         self.pair_user = self.frame["user"].to_numpy()
         self.pair_item = self.frame["item"].to_numpy()
         self.label = self.frame["label"].to_numpy(np.int64)
+
         self.rng = np.random.default_rng(0)
 
     def half_positive(self, positives, others):
@@ -119,6 +123,7 @@ class Stage:
         """ROWS (user, item) pairs of the earlier window per pair: u with pool items, then active users with p."""
         items_BC = np.stack([self.half_positive(np.intersect1d(self.by_user[u].indices, self.before.pool), self.before.pool) for u in user_B])
         users_BC = np.stack([self.half_positive(self.by_item[:, f].indices, self.active) for f in item_B])
+
         user_BR = np.concatenate([np.repeat(user_B[:, None], CONTEXT, 1), users_BC], 1)
         item_BR = np.concatenate([items_BC, np.repeat(item_B[:, None], CONTEXT, 1)], 1)
         return user_BR, item_BR
@@ -131,5 +136,6 @@ class Stage:
         context_BRH = self.before.rows(user_BR, item_BR, user_B[:, None], item_B[:, None])
         pair_BH = self.now.rows(user_B, item_B, user_B, item_B)
         X_BTH = torch.from_numpy(np.concatenate([context_BRH, pair_BH[:, None]], 1))
+
         y_BR = np.asarray(self.answer[user_BR.ravel(), item_BR.ravel()]).reshape(user_BR.shape).astype(np.float32)
         return standardize(X_BTH), torch.from_numpy(y_BR), torch.from_numpy(self.label[pairs])

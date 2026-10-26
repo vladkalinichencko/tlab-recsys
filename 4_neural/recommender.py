@@ -28,9 +28,11 @@ def histories(history, start, users, n_items):
     item_UL = np.full((len(users), MAX_EVENTS + 1), n_items)
     age_UL = np.zeros((len(users), MAX_EVENTS + 1), dtype=np.int64)
     watched_UL = np.zeros((len(users), MAX_EVENTS + 1), dtype=np.int64)
+
     item_UL[row, column] = recent["item"].to_numpy()
     age_UL[row, column] = np.log2(1 + start - recent["day"].to_numpy()).astype(np.int64)
     watched_UL[row, column] = recent["watched"].to_numpy()
+
     length_U = 1 + recent.groupby("user").size().reindex(users, fill_value=0).to_numpy()
 
     return {
@@ -47,6 +49,7 @@ class Recommender(nn.Module):
         self.encoder = ENCODERS[encoder](n_items, DIM, MAX_EVENTS)
         self.item = nn.Embedding(n_items, DIM)
         self.item_bias = nn.Parameter(torch.full((n_items,), INIT_BIAS))
+
         for module in self.modules():
             if isinstance(module, nn.Embedding):
                 nn.init.normal_(module.weight, std=INIT_STD)  # logits start near zero
@@ -54,6 +57,7 @@ class Recommender(nn.Module):
     def pair_state(self, batch, pool_P):
         """the terms of the logit of every (user, pool item) pair: user vector times item vector."""
         user_UD, item_PD = self.encoder(batch), self.item(pool_P)
+
         users, pool = len(user_UD), len(item_PD)
         return user_UD.reshape(users, 1, DIM) * item_PD.reshape(1, pool, DIM)
 

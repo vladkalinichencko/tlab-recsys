@@ -40,6 +40,7 @@ class Transformer(nn.Module):
         super().__init__()
         self.events = Events(n_items, dim)
         self.position = nn.Embedding(max_events + 1, dim)
+
         layer = nn.TransformerEncoderLayer(dim, HEADS, 2 * dim, dropout=0.1, batch_first=True)
         self.transformer = nn.TransformerEncoder(layer, LAYERS, enable_nested_tensor=False)
 
@@ -48,6 +49,7 @@ class Transformer(nn.Module):
         slots = batch["item"].shape[1]
         position_L = torch.arange(slots, device=batch["item"].device)
         future_LL = torch.ones(slots, slots, dtype=torch.bool, device=batch["item"].device).triu(1)
+
         return self.transformer(
             self.events(batch) + self.position(position_L), mask=future_LL, is_causal=True, src_key_padding_mask=~real_slots(batch)
         )

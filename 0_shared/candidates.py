@@ -48,6 +48,7 @@ def frame(users, items, target, shape):
 def ease(X, reg=EASE_REG):
     gram = np.asarray((X.T @ X).todense(), dtype=np.float64)
     gram[np.diag_indices_from(gram)] += reg
+
     inverse = np.linalg.inv(gram)
     weights = -inverse / np.diag(inverse)
     weights[np.diag_indices_from(weights)] = 0.0

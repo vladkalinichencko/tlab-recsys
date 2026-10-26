@@ -72,6 +72,7 @@ def build(candidates, history, start, users, items):
         .merge(item_stats(history, start), on="item", how="left")
         .merge(pair_stats(history, start), on=["user", "item"], how="left")
     )
+
     for group, aggregations in dataset.GROUPS.items():
         table = table.merge(blocks(history, start, ["user", group], aggregations), on=["user", group], how="left")
 
@@ -83,6 +84,7 @@ def build(candidates, history, start, users, items):
     ]
     table[numeric] = table[numeric].astype("float32")
     table[counts] = table[counts].fillna(0)
+
     table["days_since_last"] = start - table["u_last_all"]
     for name, (column, aggregate) in dataset.GAPS.items():
         table[name] = table[column] - table[aggregate]

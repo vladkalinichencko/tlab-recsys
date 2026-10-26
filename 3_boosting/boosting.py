@@ -16,6 +16,7 @@ RAW = [*dataset.USER_COLUMNS, *dataset.ITEM_COLUMNS, *dataset.GROUPS]
 def feature_set(name, table):
     everything = [column for column in table.columns if column not in ("user", "item", "label")]
     hand = [column for column in everything if column not in CF]
+
     if name == "auto":
         return [column for column in everything if column.startswith("g.") or column in RAW]
     if name == "all":
@@ -28,8 +29,10 @@ def feature_set(name, table):
 def pool(table, columns):
     frame = table[columns].copy()
     categorical = [column for column in CATEGORICAL if column in columns]
+
     for column in categorical:
         frame[column] = frame[column].astype(str)
+
     return Pool(
         frame,
         table["label"].to_numpy(),

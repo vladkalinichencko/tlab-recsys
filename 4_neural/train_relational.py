@@ -67,6 +67,7 @@ def pretrained(variant):
 
     if variant in ("counts", "full"):
         counting_attention.use(model, variant == "full")
+
     model.gates = stochastic_gates.Gates(len(contexts.COLUMNS)) if variant in ("gates", "full") else torch.nn.Identity()
     return model.to(DEVICE).train()
 
@@ -95,11 +96,13 @@ def pair_state(model, stage, rows):
     """state of the pair row after the in-context blocks, the input of TabICL's decoder."""
     captured = []
     hook = model.icl_predictor.decoder.register_forward_pre_hook(lambda module, inputs: captured.append(inputs[0][:, -1].cpu()))
+
     model.gates.eval()
     with torch.no_grad():
         for i in range(0, len(rows), SCORE_BATCH):
             logit(model, stage, rows[i : i + SCORE_BATCH])
     model.gates.train()
+
     hook.remove()
     return torch.cat(captured).numpy()
 
@@ -107,12 +110,14 @@ def pair_state(model, stage, rows):
 fit, val, test = contexts.Stage("fit"), contexts.Stage("val"), contexts.Stage("test")
 val_users = np.random.default_rng(0).choice(np.unique(val.pair_user), VAL_USERS, replace=False)
 test_users = metrics.eval_users(test.frame)
+
 positive, negative = np.flatnonzero(fit.label == 1), np.flatnonzero(fit.label == 0)
 prior_shift = float(np.log(fit.label.mean() / (1 - fit.label.mean())))
 
 model = pretrained(VARIANT)
 gate_parameters = list(model.gates.parameters())
 tabicl_parameters = [p for name, p in model.named_parameters() if not name.startswith("gates.")]
+
 optimizer = torch.optim.AdamW(
     [{"params": tabicl_parameters, "lr": LR}, {"params": gate_parameters, "lr": GATE_LR, "weight_decay": 0.0}], weight_decay=0.01
 )
@@ -123,23 +128,28 @@ for epoch in range(EPOCHS + 1):
     for step in range(STEPS if epoch > 0 else 0):
         pairs = np.concatenate([rng.choice(positive, BATCH // 2), rng.choice(negative, BATCH // 2)])
         logit_B, label_B = logit(model, fit, pairs)
+
         loss = F.binary_cross_entropy_with_logits(logit_B, label_B.float())
         if VARIANT in ("gates", "full"):
             loss = loss + LAMBDA * model.gates.open()
+
         optimizer.zero_grad()
         loss.backward()
         optimizer.step()
+
         print(f"epoch {epoch}  step {step + 1:3d}  loss {loss.item():.4f}", flush=True)
 
     ndcg = metrics.ranking(score(model, val, val_users, shift), "score")["ndcg@10"]
     curve.append(ndcg)
     print(f"epoch {epoch}  val ndcg@10 {ndcg:.4f}", flush=True)
+
     if ndcg > best:
         best, best_state, best_shift = ndcg, copy.deepcopy(model.state_dict()), shift
     if epoch - int(np.argmax(curve)) >= PATIENCE:
         break
 
 model.load_state_dict(best_state)
+
 probe_rows, probe_table = probes.pairs()
 extras = {
     "context_rows": contexts.ROWS,
@@ -150,7 +160,9 @@ extras = {
     "probe_r2": probes.r2(pair_state(model, val, probe_rows), probe_table),
     "probe_r2_pretrained": probes.r2(pair_state(pretrained("softmax" if VARIANT == "gates" else VARIANT), val, probe_rows), probe_table),
 }
+
 if VARIANT in ("gates", "full"):
     extras["gates"] = dict(zip(contexts.COLUMNS, model.gates.mu.clamp(0, 1).tolist()))
+
 torch.save(best_state, f"models/{NAME}.pt")
 metrics.report(NAME, score(model, test, test_users, best_shift), "score", extras)

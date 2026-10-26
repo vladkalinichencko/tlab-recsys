@@ -19,6 +19,7 @@ def stages(events):
     test_from = end - TEST_DAYS
     val_from = test_from - VAL_DAYS
     fit_from = val_from - FIT_DAYS
+
     return {
         "fit": (fit_from, val_from),
         "val": (val_from, test_from),

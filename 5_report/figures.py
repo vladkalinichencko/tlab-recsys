@@ -55,6 +55,7 @@ def test_metrics(reports, title, out):
     """test on the same 200 users, one bar per model"""
     subset = pd.DataFrame({model: {metric: report.get(f"subset_{metric}") for metric in ["ndcg@10", "recall@10", "roc_auc"]} for model, report in reports.items()}).T.dropna(subset=["ndcg@10"])
     order = subset.sort_values("ndcg@10").index
+
     fig, axes = plt.subplots(1, 3, figsize=(15, 0.42 * len(order) + 1.6), sharey=True)
     for ax, metric in zip(axes, subset.columns):
         values = subset.loc[order, metric].astype(float)
@@ -62,6 +63,7 @@ def test_metrics(reports, title, out):
         ax.bar_label(bars, fmt="%.3f", padding=3, fontsize=8)
         ax.set_xlim(values.min() * 0.85, values.max() * 1.08)
         ax.set_title(TITLES[metric])
+
     fig.suptitle(f"{title}, test: одни и те же 200 юзеров × 300 кандидатов")
     fig.tight_layout()
     fig.savefig(out, dpi=160)
@@ -81,6 +83,7 @@ def val_curves(root, reports, title, out):
     left.set_ylabel("NDCG@10 на валидации")
     left.legend(fontsize=8, loc="lower right")
     left.set_title("бустинг")
+
     for model, report in reports.items():
         curve = report.get("val_ndcg@10_curve")
         if curve:
@@ -89,9 +92,11 @@ def val_curves(root, reports, title, out):
             shown = curve[: best + PATIENCE + 1]
             right.plot(range(first, first + len(shown)), shown, marker="o", ms=3, color=color(model), label=NAMES[model])
             right.plot(first + best, curve[best], "*", ms=11, color=color(model))
+
     right.set_xlabel("эпоха (0 у TabICL: предобученная модель без дообучения)" if any(m.startswith("tabicl") for m in reports) else "эпоха")
     right.legend(fontsize=8, loc="lower right")
     right.set_title("нейросети, звезда: эпоха, которая идёт на test")
+
     fig.suptitle(f"{title}, NDCG@10 на валидации по ходу обучения")
     fig.tight_layout()
     fig.savefig(out, dpi=160)
@@ -108,6 +113,7 @@ def probes(reports, title, out):
             probed[NAMES[model]] = report["probe_r2"]
     if not probed:
         return
+
     r2 = pd.DataFrame(probed).T.clip(lower=0)
     fig, ax = plt.subplots(figsize=(11, 0.5 * len(r2) + 2))
     image = ax.imshow(r2.values, cmap="Greens", vmin=0, vmax=1, aspect="auto")
@@ -116,6 +122,7 @@ def probes(reports, title, out):
     for i in range(r2.shape[0]):
         for j in range(r2.shape[1]):
             ax.text(j, i, f"{r2.iloc[i, j]:.2f}", ha="center", va="center", fontsize=7, color="white" if r2.iloc[i, j] > 0.6 else "black")
+
     fig.colorbar(image, ax=ax, label="R² на отложенной половине")
     ax.set_title(f"{title}, линейные пробы: какие ручные агрегаты читаются из состояния пары")
     fig.tight_layout()
@@ -141,6 +148,7 @@ def importance(root, title, out):
         return
     drops = pd.Series(json.load(open(path))["drops"])
     by_block = drops.clip(lower=0).groupby(drops.index.map(block)).sum().sort_values()
+
     fig, ax = plt.subplots(figsize=(6.5, 3.6))
     bars = ax.barh(by_block.index, by_block.values, color="#d9822b")
     ax.bar_label(bars, fmt="%.3f", padding=3, fontsize=8)
@@ -177,6 +185,7 @@ def sizes(runs, out):
         ax.set_xscale("log")
         ax.set_xlabel("число обучаемых чисел")
         ax.set_title(title)
+
     axes[0].set_ylabel("NDCG@10 на тесте, 200 пользователей")
     order = [model for model in NAMES if model in handles]
     fig.legend([handles[m] for m in order], [NAMES[m] for m in order], loc="lower center", ncol=4, fontsize=8, frameon=False)
