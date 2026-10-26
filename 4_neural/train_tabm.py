@@ -104,6 +104,7 @@ metrics.report(
     "score",
     {
         "features": len(columns),
+        "parameters": sum(p.numel() for p in model.parameters()),
         "val_ndcg@10_curve": curve,
         **{f"val_{key}": value for key, value in metrics.ranking(validation, "score").items()},
     },
