@@ -31,7 +31,6 @@ NAMES = {
     "boosting_yetirank_hand": "CatBoost, ручные без CF",
     "boosting_yetirank_auto": "CatBoost, автоматически сгенерированный набор",
     "tabm_all": "TabM, ручные + CF",
-    "tabm_auto": "TabM, автоматически сгенерированный набор",
     "neural_transformer": "авторегрессионный трансформер",
     "tabicl_softmax": "TabICL, softmax",
     "tabicl_counts": "TabICL, SiLU / n",
@@ -39,7 +38,7 @@ NAMES = {
     "tabicl_full": "TabICL, softmax и SiLU / n + STG",
 }
 TITLES = {"ndcg@10": "NDCG@10", "recall@10": "Recall@10", "roc_auc": "ROC AUC"}
-MARKERS = ["o", "s", "o", "s", "^", "o", "^", "o", "o", "s", "^", "D"]
+MARKERS = ["o", "s", "o", "s", "^", "o", "o", "o", "s", "^", "D"]
 FAMILY = {"popularity": "#9aa0a6", "ease": "#9aa0a6", "boosting": "#d9822b", "tabm": "#7b4fd8", "neural": "#3b7dd8", "tabicl": "#2a9d5c"}
 
 
