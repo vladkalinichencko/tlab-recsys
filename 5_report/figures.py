@@ -88,7 +88,7 @@ def val_curves(root, reports, title, out):
             shown = curve[: best + PATIENCE + 1]
             right.plot(range(first, first + len(shown)), shown, marker="o", ms=3, color=color(model), label=NAMES[model])
             right.plot(first + best, curve[best], "*", ms=11, color=color(model))
-    right.set_xlabel("эпоха (0 у TabICL: предобученная модель без дообучения)")
+    right.set_xlabel("эпоха (0 у TabICL: предобученная модель без дообучения)" if any(m.startswith("tabicl") for m in reports) else "эпоха")
     right.legend(fontsize=8, loc="lower right")
     right.set_title("нейросети, звезда: эпоха, которая идёт на test")
     fig.suptitle(f"{title}, NDCG@10 на валидации по ходу обучения")
