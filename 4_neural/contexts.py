@@ -41,7 +41,6 @@ def codes(table, column):
 users = stage.users.set_index("user").reindex(range(stage.SHAPE[0]))
 films = stage.items.set_index("item").reindex(range(stage.SHAPE[1]))
 USER_COLUMNS = np.stack([codes(users, c) for c in ("age", "income", "sex", "kids_flg")], 1)
-# Yambda has no release years at all, so its column is 0 everywhere
 year = films["release_year"].fillna(films["release_year"].median()).fillna(0)
 FILM_COLUMNS = np.stack([codes(films, "content_type"), year.to_numpy(np.float32), codes(films, "age_rating")], 1)
 GENRE, COUNTRY = codes(films, "genre"), codes(films, "country")

@@ -38,7 +38,7 @@ def r2(hidden_ND, table):
         if "_events_" in name or "_watched_" in name:
             target = np.log1p(target)
         known = ~np.isnan(target)
-        if not known.any():  # year_gap on Yambda, which has no release years
+        if not known.any():
             continue
         fit, held = known.copy(), known.copy()
         fit[half:], held[:half] = False, False
