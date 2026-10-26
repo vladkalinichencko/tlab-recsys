@@ -37,6 +37,7 @@ NAMES = {
     "tabicl_counts": "TabICL, SiLU / n",
     "tabicl_gates": "TabICL, softmax + STG",
 }
+TITLES = {"ndcg@10": "NDCG@10", "recall@10": "Recall@10", "roc_auc": "ROC AUC"}
 MARKERS = ["o", "s", "o", "s", "^", "o", "^", "o", "o", "s", "^"]
 FAMILY = {"popularity": "#9aa0a6", "ease": "#9aa0a6", "boosting": "#d9822b", "tabm": "#7b4fd8", "neural": "#3b7dd8", "tabicl": "#2a9d5c"}
 
@@ -59,7 +60,7 @@ def test_metrics(reports, title, out):
         bars = ax.barh([label(m, reports[m]) for m in order], values, color=[color(m) for m in order])
         ax.bar_label(bars, fmt="%.3f", padding=3, fontsize=8)
         ax.set_xlim(values.min() * 0.85, values.max() * 1.08)
-        ax.set_title(metric)
+        ax.set_title(TITLES[metric])
     fig.suptitle(f"{title}, test: одни и те же 200 юзеров × 300 кандидатов")
     fig.tight_layout()
     fig.savefig(out, dpi=160)
@@ -76,7 +77,7 @@ def val_curves(root, reports, title, out):
             left.plot(curve["iter"] + 1, curve["NDCG:top=10;type=Exp"], style, color=color(model), lw=1.4, label=NAMES[model])
     left.set_xscale("log")
     left.set_xlabel("число деревьев")
-    left.set_ylabel("val ndcg@10")
+    left.set_ylabel("NDCG@10 на валидации")
     left.legend(fontsize=8, loc="lower right")
     left.set_title("бустинг")
     for model, report in reports.items():
@@ -90,7 +91,7 @@ def val_curves(root, reports, title, out):
     right.set_xlabel("эпоха (0 у TabICL: предобученная модель без дообучения)")
     right.legend(fontsize=8, loc="lower right")
     right.set_title("нейросети, звезда: эпоха, которая идёт на test")
-    fig.suptitle(f"{title}, val ndcg@10 по ходу обучения")
+    fig.suptitle(f"{title}, NDCG@10 на валидации по ходу обучения")
     fig.tight_layout()
     fig.savefig(out, dpi=160)
     plt.close(fig)
@@ -142,7 +143,7 @@ def importance(root, title, out):
     fig, ax = plt.subplots(figsize=(6.5, 3.6))
     bars = ax.barh(by_block.index, by_block.values, color="#d9822b")
     ax.bar_label(bars, fmt="%.3f", padding=3, fontsize=8)
-    ax.set_xlabel("сумма просадки val ndcg@10 при перемешивании колонки")
+    ax.set_xlabel("сумма просадки NDCG@10 на валидации при перемешивании колонки")
     ax.set_title(f"{title}, CatBoost без CF: какие блоки признаков работают")
     fig.tight_layout()
     fig.savefig(out, dpi=160)
@@ -175,7 +176,7 @@ def sizes(runs, out):
         ax.set_xscale("log")
         ax.set_xlabel("число обучаемых чисел")
         ax.set_title(title)
-    axes[0].set_ylabel("test ndcg@10, 200 юзеров")
+    axes[0].set_ylabel("NDCG@10 на тесте, 200 пользователей")
     order = [model for model in NAMES if model in handles]
     fig.legend([handles[m] for m in order], [NAMES[m] for m in order], loc="lower center", ncol=4, fontsize=8, frameon=False)
     fig.suptitle("Размер модели и качество")
